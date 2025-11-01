@@ -1,46 +1,163 @@
-# Public IP Address widget for KDE 6
+# Enhanced Public IP & VPN Info Widget for KDE Plasma 6
 
 ## Description
 
-Plasma 6 widget for showing informations about your public IP address and the status of your VPN (active/inactive). This is useful for informational purposes and to monitor VPN geolocation.
+An advanced fork of the original *Public IP Address* widget for KDE Plasma 6.  
+This version not only displays your **current public IP** and **geolocation**,  
+but also detects **active WireGuard and VPN connections** in real time.
 
-The expanded view shows a map with informations requested from [ipinfo.com](https://ipinfo.io/): you can copy to clipboard the different informations by clicking over them. You can also open the map on the browser, and update the informations by sending another request.
+The widget automatically switches between your **local ISP location** and  
+the **VPN endpoint location** when a WireGuard tunnel is activated.  
+It uses [ipapi.co](https://ipapi.co/) for accurate IPv4/IPv6 geolocation data.
 
-By default, the widget update itself every 5 minutes. You can change this behaviour in the settings. Please note that [ipinfo.com](https://ipinfo.io/) API limits the total amount of requests to 1000 per day: this means that the plugin will update itself at most every 2 minutes.
+The expanded view includes:
+- Detailed information about your connection (city, region, country, ISP)
+- Live map showing your current IP location
+- Copy-to-clipboard shortcuts for IP, region, and ISP
+- Automatic refresh and VPN state monitoring
 
-You can change the colors of the displayed informations in the settings.
+By default, the widget updates every 5 minutes, but you can change this in the settings.
 
-This widget uses the [excellent flags icon pack by lipis and contributors](https://github.com/lipis/flag-icon-css).
+> **Note:** [ipapi.co](https://ipapi.co/) allows up to 30,000 free requests per month  
+> (1,000 per day). Updating more frequently may require an API key.
 
 ![tooltip screenshot](screenshots/screenshot_4.png)
 ![expanded screenshot](screenshots/screenshot_3.png)
 
-*Master* branch deals with Plasma 6. *plasma5* branch contains the code for Plasma 5.
+---
+
+## Features
+
+- ✅ Detects **WireGuard** interfaces automatically (`wg show all endpoints`)
+- ✅ Fallback to current **public exit IP** (works with OpenVPN, Mullvad, etc.)
+- ✅ Handles both **IPv4 and IPv6**
+- ✅ Shows live **VPN state** (active/inactive)
+- ✅ Displays **country flags** using [flag-icon-css](https://github.com/lipis/flag-icon-css)
+- ✅ Configurable **update interval** and **label color**
+- ✅ Clickable **map view** with external browser support
+- ✅ Optional desktop notification on IP change
+
+---
 
 ## Dependencies
 
-The primary functions of the widget (check IP address) should work correctly even if the following dependencies are not installed. Anyway, to get the best experience you need:
+| Dependency | Purpose |
+|-------------|----------|
+| `curl` | Retrieve data from [ipapi.co](https://ipapi.co/) |
+| `jq` | Parse JSON responses from ipapi.co |
+| `libnotify-bin` | Show desktop notifications |
+| `nmcli` | Detect active VPN connections (non-WireGuard) |
+| `wireguard-tools` | Read active WireGuard endpoint details |
 
-* `curl`: this is used to query [ipinfo.com](https://ipinfo.io/). It can be installed with `sudo apt install curl`.
-* `libnotify-bin`: this is for showing notifications when clicking links, thus copying the link's content to the clipboard.
-`sudo apt install libnotify-bin`
-* `nmcli`: this is part of the `network-manager` package. It'll check the status of the VPN by executing the command `nmcli c show --active`; if a VPN is active, there should be some entries containing the keywords `vpn` or `tun`. It should already be installed in Ubuntu. Don't know about other distros (let me know in the comments or by opening an issue).
+Example installation (Debian/Ubuntu):
 
-## Installation
+sudo apt install curl jq libnotify-bin network-manager wireguard-tools
 
-### From openDesktop.org
+---
 
-1. Go to Open Desktop, **[Plasma 5](https://www.opendesktop.org/p/1289644/)** or **[Plasma 6](https://www.pling.com/p/2140275/)**.
-2. Click on the Files tab
-3. Click the Install button
 
-### From within the Plasma workspace
 
-1. If your widgets are locked, right-click the desktop and select `Unlock Widgets`
-2. Right-click the desktop and select `Add Widgets...`
-3. Click the `Get new widgets` button in the Widget Explorer that just opened
-4. Type `Public IP Address` into the search field
-5. Click the `Install` button next to `Public IP Address`
+## Installation (from Git)
+
+This fork can be installed manually from source using `git`.  
+The following steps will install and configure the widget for **KDE Plasma 6**.
+
+---
+
+### 1️⃣ Clone the repository
+
+```bash
+git clone https://github.com/<YOUR-USERNAME>/plasma-ip-address-enhanced.git
+cd plasma-ip-address-enhanced
+````
+
+---
+
+### 2️⃣ Install the widget
+
+Use KDE’s Plasma package tool:
+
+```bash
+plasmapkg2 -i .
+```
+
+If you later update the repository, you can upgrade it with:
+
+```bash
+plasmapkg2 -u .
+```
+
+---
+
+### 3️⃣ Ensure dependencies are installed
+
+#### Debian / Ubuntu
+
+```bash
+sudo apt install curl jq libnotify-bin network-manager wireguard-tools
+```
+
+#### Arch / Manjaro
+
+```bash
+sudo pacman -S curl jq libnotify networkmanager wireguard-tools
+```
+
+These tools are required for fetching IP/geolocation data,
+parsing JSON, showing notifications, and detecting VPN status.
+
+---
+
+### 4️⃣ Grant permissions for WireGuard access
+
+By default, the `wg` command requires root privileges to read interface information.
+To allow the widget to access this data **without** using `sudo`,
+grant the necessary capabilities to the `wg` binary:
+
+```bash
+sudo setcap cap_net_admin,cap_net_raw+ep /usr/bin/wg
+```
+
+> 💡 If your system uses a custom WireGuard path
+> (for example `/usr/local/bin/wg`), replace `/usr/bin/wg` accordingly.
+
+---
+
+### 5️⃣ Make the helper script executable
+
+The widget uses an internal helper script to query your IP and VPN location.
+Ensure it has execution permission:
+
+```bash
+chmod +x ~/.local/share/plasma/plasmoids/com.github.davide-sd.ip_address/contents/ui/wg-ipapi-json.sh
+```
+
+---
+
+### 6️⃣ Restart Plasma Shell
+
+Finally, restart your Plasma environment to reload the widget:
+
+```bash
+kquitapp6 plasmashell && kstart6 plasmashell
+```
+
+> If you are on Plasma 5, use:
+>
+> ```bash
+> kquitapp5 plasmashell && kstart5 plasmashell
+> ```
+
+---
+
+After completing these steps, the **Enhanced Public IP & VPN Info Widget**
+will appear in your Plasma widget list under *“Public IP Address Enhanced”*.
+
+Add it to your panel or desktop — it will now display your **current public IP**,
+**geolocation**, and automatically switch to **WireGuard endpoint information**
+when a VPN connection is active. 🌍🔐
+
+
 
 ## FAQ
 
