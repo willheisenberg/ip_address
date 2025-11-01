@@ -228,19 +228,34 @@ PlasmoidItem {
 		repeat: true
 		triggeredOnStart: true
 		onTriggered: {
-			debug_print("[timer_vpn.onTriggered] vpnKeywords: " + vpnKeywords + "; prevVPNstatus=" + prevVPNstatus + "; curVPNstatus=" + curVPNstatus)
-			executable_vpn.exec("nmcli c show --active | grep -E '" + vpnKeywords + "'")
+			debug_print("[timer_vpn.onTriggered] vpnKeywords: " + vpnKeywords)
 
-			if ((prevVPNstatus != "unknown") && (prevVPNstatus != curVPNstatus)) {
-				// better to wait for some time in order for the connection
-				// to stabilize
-				var wait_for = 5000
-				debug_print("[timer_vpn.onTriggered] detected change, scheduling request. Waiting for " + wait_for + "ms")
-				reloadInProgress = false   // abort old retries
-				setTimeout(function() {
-					debug_print("[timer_vpn.onTriggered] Waited for " + wait_for + "ms. Executing reloadData()")
+			executable_vpn.exec(
+				"(nmcli c show --active | grep -E '" + vpnKeywords + "') || (ip link show berlinWg &>/dev/null && echo active)"
+			)
+			// wir reagieren, sobald executable_vpn fertig ist
+		}
+	}
+
+	Connections {
+		target: executable_vpn
+		onExited: (exitCode, exitStatus, stdout, stderr) => {
+			prevVPNstatus = curVPNstatus
+
+			if (stdout.trim() === "") {
+				curVPNstatus = "inactive"
+				vpn_svg.imagePath = Qt.resolvedUrl("../icons/vpn-shield-off.svg")
+			} else {
+				curVPNstatus = "active"
+				vpn_svg.imagePath = Qt.resolvedUrl("../icons/vpn-shield-on.svg")
+			}
+
+			if (curVPNstatus !== prevVPNstatus) {
+				debug_print("[vpn monitor] state changed: " + prevVPNstatus + " → " + curVPNstatus)
+				// kurze Verzögerung, damit Netzwerk stabil ist
+				setTimeout(() => {
 					reloadData()
-				}, wait_for)
+				}, 2000)
 			}
 		}
 	}
@@ -293,30 +308,17 @@ PlasmoidItem {
 	}
 
 	function getIPdata(successCallback, failureCallback) {
-		debug_print("[getIPdata] running curl")
+		debug_print("[getIPdata] running integrated WireGuard+ipapi query")
 
-		// store callbacks for the async handler to call later
-        _pendingSuccessCallback = successCallback
-        _pendingFailureCallback = failureCallback
+		_pendingSuccessCallback = successCallback
+		_pendingFailureCallback = failureCallback
 
-		try {
-			// -s for silent, --max-time for timeout
-			let cmd = "curl -s --max-time 5 https://ipinfo.io/json"
+		let cmd = "/home/tesla/.local/share/plasma/plasmoids/com.github.davide-sd.ip_address/contents/ui/wg-ipapi-json.sh"
 
-			// NOTE: to test if the retry logic works correctly, uncomment
-			// this line
-			// let cmd = "curl -s --max-time 5 https://this-will-fail.meow"
-
-			executable_curl.exec(cmd)
-			return true
-		} catch (err) {
-			debug_print("[getIPdata] Error " + err)
-			// clear pending callbacks on immediate failure
-            _pendingSuccessCallback = null
-            _pendingFailureCallback = null
-			return false
-		}
+		executable_curl.exec(cmd)
 	}
+
+
 
 	function successCallback(jsonData) {
 		root.jsonData = jsonData
