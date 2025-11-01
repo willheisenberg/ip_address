@@ -39,6 +39,32 @@ By default, the widget updates every 5 minutes, but you can change this in the s
 
 ---
 
+### 🔍 Why this fork exists
+
+Many VPN setups — especially **WireGuard site-to-site tunnels or split-routing configurations** —
+do **not** route general Internet traffic through the VPN interface (`AllowedIPs` ≠ `0.0.0.0/0`).
+In these cases, tools like `curl --interface wg0` cannot reach external IP lookup services,
+because the VPN is only used for internal or peer-to-peer communication.
+
+This widget solves that problem by using:
+
+```bash
+wg show all endpoints
+```
+
+to directly read the **public endpoint address** of your WireGuard peer.
+That address is then queried via [ipapi.co](https://ipapi.co/) to show the **real geolocation**
+of the VPN server — even if your internet traffic stays outside the tunnel.
+
+This design ensures:
+
+* accurate VPN geolocation **even with non-routed WireGuard tunnels**
+* **no root password needed** (using `setcap` on `wg`)
+* seamless switching between **local ISP** and **VPN endpoint** info
+
+---
+
+
 ## Dependencies
 
 | Dependency | Purpose |
